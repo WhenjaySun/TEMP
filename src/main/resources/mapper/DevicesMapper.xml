@@ -1,0 +1,14 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.huspace.temperature.temp.mapper.DeviceMapper">
+    <resultMap id="deviceMap" type="cn.huspace.temperature.temp.dto.DeviceDTO">
+        <result column="id" property="id"/>
+        <result column="device_name" property="deviceName"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="deviceMap">
+        SELECT *
+        FROM devices
+    </select>
+</mapper>
