@@ -80,7 +80,7 @@ public class SshUtil {
     }
 
     // 获取远程ssh执行结果
-    private Map<String, String> getSshResult(String host, int port, String user, String password) {
+    public Map<String, String> getSshResult(String host, int port, String user, String password) {
         JSch jsch = new JSch();
         Session session;
         Map<String, String> tempRes = new HashMap<>();
@@ -96,6 +96,36 @@ public class SshUtil {
 
             tempRes.put("temperature", sessionRes(session, tempCommand));
             tempRes.put("memory", sessionRes(session, memoryCommand));
+            session.disconnect();
+        } catch (JSchException | IOException e) {
+            throw new RuntimeException(e);
+        }
+        return tempRes;
+    }
+
+    // EU获取远程ssh执行结果
+    public Map<String, String> getEuSshResult(String host, int port, String user, String password) {
+        JSch jsch = new JSch();
+        Session session;
+        Map<String, String> tempRes = new HashMap<>();
+
+        try {
+            session = jsch.getSession(user, host, port);
+            session.setPassword(password);
+
+            // Set preferred authentication methods
+            session.setConfig("PreferredAuthentications", "keyboard-interactive,password");
+
+            // Set UserInfo to handle keyboard-interactive authentication
+            session.setUserInfo(new MyUserInfo(password));
+
+            // Optional: Disable host key checking if you are sure about the server's identity
+            session.setConfig("StrictHostKeyChecking", "no");
+
+            // Connect to the server
+            session.connect();
+
+            tempRes.put("status", sessionRes(session, "cd scripts && bash check_pm2.sh "));
             session.disconnect();
         } catch (JSchException | IOException e) {
             throw new RuntimeException(e);
@@ -134,6 +164,7 @@ public class SshUtil {
 
     /**
      * 获取redis数据
+     *
      * @return Map 结果
      */
     public Map<String, String> getDeviceFromRedisData() {
