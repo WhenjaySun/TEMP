@@ -106,7 +106,7 @@ public class SshUtil {
     // EU获取远程ssh执行结果
     public Map<String, String> getEuSshResult(String host, int port, String user, String password) {
         JSch jsch = new JSch();
-        Session session;
+        Session session = null;
         Map<String, String> tempRes = new HashMap<>();
 
         try {
@@ -125,12 +125,52 @@ public class SshUtil {
             // Connect to the server
             session.connect();
 
-            tempRes.put("status", sessionRes(session, "cd scripts && bash check_pm2.sh "));
-            session.disconnect();
+            String commandResult = executeRemoteCommand(session, "cd scripts && bash check_pm2.sh");
+            tempRes.put("status", commandResult);
         } catch (JSchException | IOException e) {
-            throw new RuntimeException(e);
+            tempRes.put("error", e.getMessage());
+            return tempRes; // 返回包含错误信息的结果
+        } finally {
+            if (session != null) {
+                session.disconnect();
+            }
         }
         return tempRes;
+    }
+
+    private String executeRemoteCommand(Session session, String command) throws JSchException, IOException {
+        ChannelExec channel = null;
+        try {
+            channel = (ChannelExec) session.openChannel("exec");
+            channel.setCommand(command);
+            InputStream in = channel.getInputStream();
+            channel.connect();
+
+            // Read command output
+            byte[] tmp = new byte[1024];
+            StringBuilder outputBuffer = new StringBuilder();
+            while (true) {
+                while (in.available() > 0) {
+                    int i = in.read(tmp, 0, 1024);
+                    if (i < 0) break;
+                    outputBuffer.append(new String(tmp, 0, i));
+                }
+                if (channel.isClosed()) {
+                    if (in.available() > 0) continue;
+                    break;
+                }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return outputBuffer.toString();
+        } finally {
+            if (channel != null) {
+                channel.disconnect();
+            }
+        }
     }
 
     private static String sessionRes(Session session, String cmd) throws JSchException, IOException {
